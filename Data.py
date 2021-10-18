@@ -2,6 +2,8 @@ from abc import abstractmethod
 import pandas as pd
 import numpy as np
 import pickle as pkl
+import sys
+import re
 
 from typing import Union, Optional
 
@@ -41,17 +43,29 @@ class FakeNewsDataProcesser(DataProcesser):
         return feature, label
     
     def imputation(self):
-        self.data.author.fillna('', inplace=True)
-        self.data.text.fillna('', inplace=True)
-        self.data.title.fillna('', inplace=True)
+        self.data.author.fillna('Anonymous', inplace=True)
     
+    @staticmethod
+    def check_long_author(data):
+        return data if len(data) < 50 else 'Author Sentence'
+
     def remove_invalid_char(self):
         self.data.text = self.data.text.apply(lambda x: x.replace('@', ' at '))
-        self.data.text = self.data.text.apply(lambda x: x.replace(r"[^A-Za-z0-9,.!'?&]", " "))
+        self.data.text = self.data.text.apply(lambda x: x if len(x) > 10 else np.nan)
+        self.data.title = self.data.title.apply(lambda x: x if len(x) > 5 else np.nan)
+        self.data.author = self.data.author.apply(lambda x: self.check_long_author(x))
+        self.data.author = self.data.author.apply(lambda x: re.sub(r'^\s+&', 'Anonymous', x))
+        self.data.author = self.data.author.apply(lambda x: re.split('add|,', x))
+    
+    def remove_nan_text(self):
+        self.data = self.data[self.data.text.notna()]
+        self.data = self.data[self.data.title.notna()]
     
     def default_process(self, split_dataset=False, vali_set=False, split_ratio:float=0.8):
+        self.remove_nan_text()
         self.imputation()
         self.remove_invalid_char()
+        self.remove_nan_text()
         feature = dict()
         label = dict()
         if split_dataset:
@@ -70,12 +84,10 @@ class FakeNewsDataProcesser(DataProcesser):
         return feature, label
             
 
-    
-
 if __name__ == "__main__":
     file = './data/fake-news/train.csv'
     dp = FakeNewsDataProcesser()
     dp.read(file)
-    print(dp.raw.info())
 
     feature, label = dp.default_process(split_dataset=True)
+    np.set_printoptions(threshold=sys.maxsize)
