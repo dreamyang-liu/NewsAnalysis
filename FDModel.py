@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import pdb
 
 from torch.autograd import Variable
 from transformers import AutoTokenizer, AutoModel
@@ -42,7 +43,7 @@ class AuthorTokenizer(object):
 
 class SentenceEmbedding(object):
 
-    def __init__(self, device=PRETRAIN_DEVICE, output_device=PRETRAIN_DEVICE):
+    def __init__(self, device=PRETRAIN_DEVICE, output_device=TRAIN_DEVICE):
         self.device = device
         self.output_device = output_device
         self.tokenizer = AutoTokenizer.from_pretrained('sentence-transformers/paraphrase-distilroberta-base-v2')
@@ -71,22 +72,24 @@ class Attention(nn.Module):
     def __init__(self, emb_dim, attn_emb_dim):
         super(Attention, self).__init__()
         self.fc = nn.Linear(emb_dim, attn_emb_dim)
-        self.context = Variable(torch.randn((1, attn_emb_dim), requires_grad = True))
+        self.context = nn.Parameter(torch.randn((1, attn_emb_dim))).to(TRAIN_DEVICE)
     
     def forward(self, X):
         """
         X: K * emb_dim
         """
         o = self.fc(X) # K * attn_emb_dim
-        o = F.tanh(o)
+        o = torch.tanh(o)
         o = self.context @ o.t() # 1 * K
-        o = F.softmax(o)
+        o = F.softmax(o, dim=0)
         return o @ X
 
 class FDModel(nn.Module):
 
     def __init__(self, author_dim, sentence_dim):
         super(FDModel, self).__init__()
+        self.author_dim = author_dim
+        self.sentence_dim = sentence_dim
         self._author_attn = Attention(author_dim, 32)
         self._title_attn = Attention(sentence_dim, 32)
         self._text_attn = Attention(sentence_dim, 32)
@@ -95,19 +98,30 @@ class FDModel(nn.Module):
         self._title_fc = nn.Linear(sentence_dim, 1)
         self._text_fc = nn.Linear(sentence_dim, 1)
 
-        self._classifier_fc = nn.Linear(3, 1)
+        self._classifier_fc = nn.Linear(3, 2)
     
     def forward(self, author_emb, title_emb, text_emb):
-        o_attn_author = self._author_attn(author_emb)
-        o_attn_title = self._title_attn(title_emb)
-        o_attn_text = self._text_attn(text_emb)
+        batch_size = len(author_emb)
+        batch_attn_author = []
+        batch_attn_title = []
+        batch_attn_text = []
 
-        score_fc_author = self._author_fc(o_attn_author)
-        score_fc_title = self._title_fc(o_attn_title)
-        score_fc_text = self._text_fc(o_attn_text)
+        for i in range(batch_size):
+            batch_attn_author.append(self._author_attn(author_emb[i]))
+            batch_attn_title.append(self._title_attn(title_emb[i]))
+            batch_attn_text.append(self._text_attn(text_emb[i]))
+        
+        # pdb.set_trace()
+        batch_attn_author = torch.cat(batch_attn_author, dim=0)
+        batch_attn_title = torch.cat(batch_attn_title, dim=0)
+        batch_attn_text = torch.cat(batch_attn_text, dim=0)
 
-        score = F.sigmoid(torch.cat([score_fc_author, score_fc_title, score_fc_text]))
-        return F.sigmoid(self._classifier_fc(score))
+        score_fc_author = self._author_fc(batch_attn_author)
+        score_fc_title = self._title_fc(batch_attn_title)
+        score_fc_text = self._text_fc(batch_attn_text)
+
+        score = torch.sigmoid(torch.cat([score_fc_author, score_fc_title, score_fc_text], dim=1))
+        return F.softmax(self._classifier_fc(score), dim=1)
 
 
 if __name__ == '__main__':

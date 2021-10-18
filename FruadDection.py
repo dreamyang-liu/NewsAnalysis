@@ -14,8 +14,6 @@ from Datagenerator import DataGenerator
 from Data import FakeNewsDataProcesser
 from FDModel import *
 
-PRETRAIN_DEVICE = torch.device("cuda:2")
-TRAIN_DEVICE = torch.device("cuda:1")
 DEBUG = False
 
 
@@ -33,23 +31,27 @@ class FraudDectionTrainer(object):
         self.epoch = self.args.epoch
         self.learning_rate = self.args.learning_rate
 
-        self.optim = optim.SGD(list(model.parameters()) + list(self.author_embedding.parameters()), lr=0.001)
+        self.optim = optim.Adam(list(self.model.parameters()) + list(self.author_embedding.parameters()), lr=0.01)
         self.loss = nn.CrossEntropyLoss()
         
     def train(self):
         self.model.train()
         with trange(self.epoch) as progress:
             author_emb, title_emb, text_emb, label = self.data_generator.get_train_features()
+            label = label.to(TRAIN_DEVICE)
             for ep in progress:
                 try:
-                    print(author_emb[0])
-                    print(title_emb[0])
-                    print(text_emb[0])
-                    print(label[0])
+                    o = self.model(author_emb, title_emb, text_emb)
+                    loss = self.loss(o, label)
+                    out = torch.argmax(o.detach(), dim=1)
+                    acc = (out.shape[0] - torch.count_nonzero(torch.logical_xor(out, label.detach()))) / out.shape[0]
+                    loss.backward(retain_graph=True)
+                    self.optim.step()
+                    self.optim.zero_grad()
+                    progress.set_description(f"epoch{ep} train loss: {loss}, acc: {acc}")
                 except StopIteration:
                     pass
-                # progress.set_description(f"epoch{ep} train loss: {total_loss}, vali loss: {vali_loss}")
-                # torch.save(self.model.state_dict(), self.args.save_dir)
+        torch.save(self.model.state_dict(), self.args.save_dir)
     
     def train_epoch(self):
         self.model.train()
