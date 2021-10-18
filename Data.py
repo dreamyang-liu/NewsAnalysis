@@ -41,22 +41,33 @@ class FakeNewsDataProcesser(DataProcesser):
         return feature, label
     
     def imputation(self):
-        self.data.author.fillna('Unknown', inplace=True)
-        self.data.text.fillna('No Content', inplace=True)
-        self.data.title.fillna('No Title', inplace=True)
+        self.data.author.fillna('', inplace=True)
+        self.data.text.fillna('', inplace=True)
+        self.data.title.fillna('', inplace=True)
     
     def remove_invalid_char(self):
         self.data.text = self.data.text.apply(lambda x: x.replace('@', ' at '))
         self.data.text = self.data.text.apply(lambda x: x.replace(r"[^A-Za-z0-9,.!'?&]", " "))
     
-    def default_process(self, split_train_test=False, split_ratio=0.8):
+    def default_process(self, split_dataset=False, vali_set=False, split_ratio:float=0.8):
         self.imputation()
         self.remove_invalid_char()
-        if split_train_test:
-            test_start = int(self.data.shape[0] * split_ratio)
-            train_data, test_data = self.data[0:test_start], self.data[test_start:]
-            return self.split_feature_label(train_data), self.split_feature_label(test_data)
-        return self.split_feature_label(self.data)
+        feature = dict()
+        label = dict()
+        if split_dataset:
+            if vali_set:
+                vali_start = int(self.data.shape[0] * split_ratio)
+                test_start = int(self.data.shape[0] * (split_ratio + .1))
+                train_data = self.data[0:vali_start]
+                vali_data = self.data[vali_start:test_start]
+                test_data = self.data[test_start:]
+                feature['vali'], label['vali'] = self.split_feature_label(vali_data)
+            else:
+                test_start = int(self.data.shape[0] * split_ratio)
+                train_data, test_data = self.data[0:test_start], self.data[test_start:]
+            feature['train'], label['train'] = self.split_feature_label(train_data)
+            feature['test'], label['test'] = self.split_feature_label(test_data)
+        return feature, label
             
 
     
@@ -65,5 +76,6 @@ if __name__ == "__main__":
     file = './data/fake-news/train.csv'
     dp = FakeNewsDataProcesser()
     dp.read(file)
+    print(dp.raw.info())
 
-    (train_feature, train_label), (test_feature, test_label) = dp.default_process(split_train_test=True)
+    feature, label = dp.default_process(split_dataset=True)

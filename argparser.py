@@ -11,8 +11,9 @@ parser.add_argument('--epoch', default=20, type=int)
 parser.add_argument('--optimizer_type', default='adam', type=str, choices=['sgd', 'adam', 'rmsprop', 'adagrad'])
 parser.add_argument('--use_pretrained_embedding', default=False, type=bool)
 parser.add_argument('--word_embedding_dim', default=64, type=int)
+parser.add_argument('--gpu', default=-1, type=int, help='ID of the gpu to run on. If set to -1, the use CPU.')
 parser.add_argument('--batch_size', default=128, type=int)
-parser.add_argument('--train_test_split_ratio', default=0.8, type=float)
+parser.add_argument('--train_proportion', default=0.8, type=float)
 parser.add_argument('--save_checkpoint', default=False, type=bool)
 parser.add_argument('--save_dir', default="saved_models/fruad", type=str)
 parser.add_argument('--learning_rate', default=1e-3, type=float)
@@ -39,8 +40,8 @@ def select_free_gpu():
         mem.append(gpu_stats.jsonify()["gpus"][i]["memory.used"])
     return gpus[np.argmin(mem)]
 
-
-if torch.cuda.is_available():
+CPU = torch.device('cpu')
+if torch.cuda.is_available() and args.gpu != -2:
     if args.gpu < 0:
         args.gpu = select_free_gpu()
     DEVICE = torch.device('cuda:' + str(args.gpu))
