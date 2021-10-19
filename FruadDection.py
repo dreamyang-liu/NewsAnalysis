@@ -38,7 +38,9 @@ class FraudDectionTrainer(object):
         self.model.train()
         with trange(self.epoch) as progress:
             author_emb, title_emb, text_emb, label = self.data_generator.get_train_features()
+            t_author_emb, t_title_emb, t_text_emb, t_label = self.data_generator.get_test_features()
             label = label.to(TRAIN_DEVICE)
+            t_label = t_label.to(TRAIN_DEVICE)
             for ep in progress:
                 try:
                     o = self.model(author_emb, title_emb, text_emb)
@@ -48,22 +50,34 @@ class FraudDectionTrainer(object):
                     loss.backward(retain_graph=True)
                     self.optim.step()
                     self.optim.zero_grad()
-                    progress.set_description(f"epoch{ep} train loss: {loss}, acc: {acc}")
+                    vali_loss, vali_acc = self.eval_epoch(t_author_emb, t_title_emb, t_text_emb, t_label)
+                    progress.set_description(f"epoch{ep} train loss: {loss}, acc: {acc}, vali loss: {vali_loss}, vali_acc: {vali_acc}")
                 except StopIteration:
                     pass
         torch.save(self.model.state_dict(), self.args.save_dir)
     
-    def train_epoch(self):
-        self.model.train()
-        total_loss = 0
-        vali_loss = 0
-        
-        return total_loss, vali_loss
-
-    def eval_epoch(self):
-        self.model.eval()
-        pass
+    def eval_epoch(self, author_emb, title_emb, text_emb, label):
+        with torch.no_grad():
+            label = label.to(TRAIN_DEVICE)
+            try:
+                o = self.model(author_emb, title_emb, text_emb)
+                loss = self.loss(o, label)
+                out = torch.argmax(o.detach(), dim=1)
+                acc = (out.shape[0] - torch.count_nonzero(torch.logical_xor(out, label.detach()))) / out.shape[0]
+            except StopIteration:
+                pass
+            return loss, acc
     
+    
+    def eval(self, feature):
+        with torch.no_grad():
+            author_emb, title_emb, text_emb = self.data_generator.get_eval_features(feature)
+            try:
+                o = self.model(author_emb, title_emb, text_emb)
+                out = torch.argmax(o.detach(), dim=1)
+            except StopIteration:
+                pass
+            return out.cpu()
     def load_model(self):
         self.model.load_state_dict(torch.load(self.args.save_dir))
     
@@ -103,7 +117,26 @@ class FraudDectionTrainer(object):
         print(f"Evaluation complete, total loss: {total_loss}")
 
 
-if __name__ == "__main__":
+def test():
+    
+    file = './data/fake-news/train.csv'
+    dp = FakeNewsDataProcesser()
+    dp.read(file)
+    test_file = './data/fake-news/test.csv'
+    feature, label = dp.default_process(split_dataset=True, vali_set=True)
+    data_generator = DataGenerator(feature, label)
+    model = FDModel(32, 768)
+    trainer = FraudDectionTrainer(model, data_generator, args)
+    trainer.train()
+    dp.read(test_file)
+    feature_test = dp.default_process(eval=True)
+    pred = trainer.eval(feature_test)
+    with open('pred.csv', 'w') as f:
+        f.write(f'id,label\n')
+        for idx, uid in enumerate(dp.data['id']):
+            f.write(f'{uid},{pred[idx]}\n')
+
+def train():
     file = './data/fake-news/train.csv'
     dp = FakeNewsDataProcesser()
     dp.read(file)
@@ -112,6 +145,21 @@ if __name__ == "__main__":
     model = FDModel(32, 768)
     trainer = FraudDectionTrainer(model, data_generator, args)
     trainer.train()
-
+  
+def postprocess():
+    dp = FakeNewsDataProcesser()
+    test_file = './data/fake-news/test.csv'
+    dp.read(test_file)
+    print(dp.data.id)
+    import pandas as pd
+    pred = pd.read_csv('pred.csv')
+    l = dp.raw.merge(pred,how='left')
+    l.fillna(1, inplace=True)
+    m = l[['id', 'label']]
+    m.to_csv('submit.csv', index=False)
+if __name__ == "__main__":
+    test()
+    postprocess()
+    
     # se = SentenceEmbedding()
     # se.get_sentence_embeddings(None)

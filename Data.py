@@ -46,14 +46,22 @@ class FakeNewsDataProcesser(DataProcesser):
         self.data.author.fillna('Anonymous', inplace=True)
     
     @staticmethod
-    def check_long_author(data):
+    def check_author(data):
+        if data == 'nan':
+            return 'Anonymous'
         return data if len(data) < 50 else 'Author Sentence'
 
     def remove_invalid_char(self):
         self.data.text = self.data.text.apply(lambda x: x.replace('@', ' at '))
         self.data.text = self.data.text.apply(lambda x: x if len(x) > 10 else np.nan)
+        self.data.text = self.data.text.apply(lambda x: re.sub('&|\*|#', '', str(x)))
+        self.data.text = self.data.text.apply(lambda x: x.replace(u'\u2026', ''))
+        self.data.text = self.data.text.apply(lambda x: x.replace('|', ''))
+        self.data.text = self.data.text.apply(lambda x: x.lower())
+        self.data.text = self.data.text.apply(lambda x: x.replace('-', ' '))
+        self.data.text = self.data.text.apply(lambda x: x.replace(' – ', ' '))
         self.data.title = self.data.title.apply(lambda x: x if len(x) > 5 else np.nan)
-        self.data.author = self.data.author.apply(lambda x: self.check_long_author(x))
+        self.data.author = self.data.author.apply(lambda x: self.check_author(x))
         self.data.author = self.data.author.apply(lambda x: re.sub(r'^\s+&', 'Anonymous', x))
         self.data.author = self.data.author.apply(lambda x: re.split('add|,', x))
     
@@ -61,7 +69,16 @@ class FakeNewsDataProcesser(DataProcesser):
         self.data = self.data[self.data.text.notna()]
         self.data = self.data[self.data.title.notna()]
     
-    def default_process(self, split_dataset=False, vali_set=False, split_ratio:float=0.8):
+    def default_process(self, split_dataset=False, vali_set=False, split_ratio:float=0.8, eval=False):
+        if eval:
+            self.remove_nan_text()
+            self.data.label = 1
+            self.imputation()
+            self.remove_invalid_char()
+            self.remove_nan_text()
+            return self.data
+        
+
         self.remove_nan_text()
         self.imputation()
         self.remove_invalid_char()

@@ -21,10 +21,11 @@ class AuthorEmbedding(nn.Module):
 class AuthorTokenizer(object):
     
     def __init__(self, author_list):
-        self.map = bidict({author:i+2 for i, author in enumerate(set(author_list))})
+        self.map = bidict({author:i+3 for i, author in enumerate(set(author_list))})
         self.map['Anonymous'] = 0
         self.map['Author Sentence'] = 1
-        self.author_length = set(author_list).__len__() + 2
+        self.map['Unknown'] = 2
+        self.author_length = set(author_list).__len__() + 3
     
     def assign(self, author):
         if author in dict(self.map).keys():
@@ -32,7 +33,7 @@ class AuthorTokenizer(object):
         elif len(author) >= 50:
             return self.map['Author Sentence']
         else:
-            return 0
+            return self.map['Unknown']
     
     def encode_author(self, authors):
         if isinstance(authors, str):
@@ -53,12 +54,12 @@ class SentenceEmbedding(object):
     def get_sentence_embeddings(self, sentences):
         # Sentences we want sentence embeddings for
         # sentences = ['This is an example sentence', 'Each sentence is converted']
+        # raise ValueError(f'Debug break: {len(sentences)}')
         encoded_input = self.tokenizer(sentences, padding=True, truncation=True, return_tensors='pt').to(self.device)
         # Compute token embeddings
         model_output = self.model(**encoded_input)
         sentence_embeddings = self.mean_pooling(model_output, encoded_input['attention_mask'])
         sentence_embeddings = sentence_embeddings.to(self.output_device)
-        gpu_memory_collect()
         return sentence_embeddings
     
     @staticmethod

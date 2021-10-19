@@ -24,14 +24,22 @@ def collect_all_titles(titles_list):
         res.append(segmenter.segment(titles))
     return res
 
-def collect_all_text_worker(text_list, return_list, i):
+def collect_all_text_worker(text_list, return_list, idx):
     segmenter = pysbd.Segmenter()
     res = []
     for texts in tqdm(text_list):
-        res.append(segmenter.segment(texts))
-        if segmenter.segment(texts).__len__() == 0:
-            print(len(texts), texts == ' ', texts == '  ', texts == '   ')
-    return_list[i] = res
+        sentences = segmenter.segment(texts)
+        if len(sentences) >= 400:
+            merge_sentences = []
+            for i in range(0, len(sentences), 2):
+                if i + 1 < len(sentences):
+                    merge_sentences.append(sentences[i] + sentences[i+1])
+                else:
+                    merge_sentences.append(sentences[i])
+            res.append(merge_sentences)
+        else:
+            res.append(sentences[:1000])
+    return_list[idx] = res
 
 def collect_all_text(texts_list, process=1):
     manager = multiprocessing.Manager()
@@ -50,6 +58,7 @@ def collect_all_text(texts_list, process=1):
         res.extend(return_list[i])
     return res
 
+
 class DataGenerator(object):
 
     def __init__(self, feature, label):
@@ -61,26 +70,36 @@ class DataGenerator(object):
         self.author_embedding = AuthorEmbedding(self.author_tokenizer.author_length, 32).to(TRAIN_DEVICE)
         self.sentence_embedding = SentenceEmbedding(device=PRETRAIN_DEVICE, output_device=TRAIN_DEVICE)
     
+    def get_eval_features(self, feature):
+        _feature = feature
+        text_list = collect_all_text(_feature['text'], 30)
+        _, author_list = collect_all_authors(_feature['author'])
+        title_list = collect_all_titles(_feature['title'])
+        author_emb = [self.author_embedding(self.author_tokenizer.encode_author(author).to(TRAIN_DEVICE)) for author in author_list]
+        title_emb = [self.sentence_embedding.get_sentence_embeddings(title) for title in title_list]
+        text_emb = [self.sentence_embedding.get_sentence_embeddings(text) for text in tqdm(text_list)]
+        return author_emb, title_emb, text_emb
+    
     def get_train_features(self):
         _feature = self.feature['train']
         _label = torch.tensor(self.label['train'].values, dtype=torch.long)
+        text_list = collect_all_text(_feature['text'], 30)
         _, author_list = collect_all_authors(_feature['author'])
         title_list = collect_all_titles(_feature['title'])
-        text_list = collect_all_text(_feature['text'], 30)
         author_emb = [self.author_embedding(self.author_tokenizer.encode_author(author).to(TRAIN_DEVICE)) for author in author_list]
         title_emb = [self.sentence_embedding.get_sentence_embeddings(title) for title in title_list]
-        text_emb = [self.sentence_embedding.get_sentence_embeddings(text) for text in text_list]
+        text_emb = [self.sentence_embedding.get_sentence_embeddings(text) for text in tqdm(text_list)]
         return author_emb, title_emb, text_emb, _label
     
     def get_test_features(self):
-        _feature = self.feature['test']
-        _label = torch.tensor(self.label['test'].values, dtype=torch.long)
+        _feature = self.feature['vali']
+        _label = torch.tensor(self.label['vali'].values, dtype=torch.long)
+        text_list = collect_all_text(_feature['text'], 30)
         _, author_list = collect_all_authors(_feature['author'])
         title_list = collect_all_titles(_feature['title'])
-        text_list = collect_all_text(_feature['text'], 30)
-        author_emb = (self.author_embedding(torch.tensor(self.author_tokenizer.encode_author(author), dtype=torch.long)) for author in author_list)
-        title_emb = (self.sentence_embedding.get_sentence_embeddings(title) for title in title_list)
-        text_emb = (self.sentence_embedding.get_sentence_embeddings(text) for text in text_list)
+        author_emb = [self.author_embedding(self.author_tokenizer.encode_author(author).to(TRAIN_DEVICE)) for author in author_list]
+        title_emb = [self.sentence_embedding.get_sentence_embeddings(title) for title in title_list]
+        text_emb = [self.sentence_embedding.get_sentence_embeddings(text) for text in tqdm(text_list)]
         return author_emb, title_emb, text_emb, _label
 
 
