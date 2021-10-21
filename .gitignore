@@ -1,3 +1,8 @@
 c.py
 crawler.py
 data/
+*.pyc
+*.csv
+*.ipynb
+saved_models/
+*.sh
