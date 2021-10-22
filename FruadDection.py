@@ -24,6 +24,32 @@ class FraudDectionTrainer(object):
         self.data_generator = data_generator
         self.author_embedding = self.data_generator.author_embedding
 
+class ClassifierLayer(nn.Module):
+
+    def __init__(self, input_dim, output_dim):
+        super(ClassifierLayer, self).__init__()
+        
+
+class FruadDection(nn.Module):
+    
+    def __init__(self):
+        super(FruadDection, self).__init__()
+        self._word_embedding = Union[nn.Module, torch.Tensor, None]
+        self._classifier_layers = Union[nn.Module, None]
+
+    def forward(self, X):
+        embedding = self._word_embedding.forward(X)
+        score = F.softmax(self._classifier_layers.forward(embedding))
+        return score
+
+class FraudDectionTrainer(object):
+
+    def __init__(self, model:nn.Module, train_feature:torch.Tensor, train_label:torch.Tensor, test_feature:torch.Tensor, test_label:torch.Tensor, args):
+        self.model = model.to(DEVICE)
+        self.train_feature = train_feature
+        self.train_label = train_label
+        self.test_feature = test_feature
+        self.test_label = test_label
         self.args = args
 
         self.batch_size = self.args.batch_size
