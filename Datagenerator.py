@@ -101,6 +101,12 @@ class DataGenerator(object):
         title_emb = [self.sentence_embedding.get_sentence_embeddings(title) for title in title_list]
         text_emb = [self.sentence_embedding.get_sentence_embeddings(text) for text in tqdm(text_list)]
         return author_emb, title_emb, text_emb, _label
+    
+    def get_tensor(self, author, title, text, device=torch.device('cpu')):
+        author_emb = self.author_embedding(self.author_tokenizer.encode_author(author).to(device))
+        title_emb = self.sentence_embedding.get_sentence_embeddings(title).to(device)
+        text_emb = self.sentence_embedding.get_sentence_embeddings(text).to(device)
+        return author_emb, title_emb, text_emb
 
 
 

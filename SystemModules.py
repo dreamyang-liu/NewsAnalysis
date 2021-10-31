@@ -3,9 +3,11 @@ import torch
 from abc import ABC, abstractmethod
 from Define import *
 
-from transformers import BartTokenizer, BartForConditionalGeneration, BartConfig
+from transformers import BartTokenizer, BartForConditionalGeneration, BartConfig, AutoModelForSeq2SeqLM
 from transformers import AutoModelForQuestionAnswering, AutoTokenizer, pipeline
 
+from Datagenerator import *
+from FruadDection import *
 
 class SystemModuleBase(ABC):
 
@@ -29,14 +31,14 @@ class TSSystemModule(SystemModuleBase):
 
     def initialize(self):
         
-        self.model = BartForConditionalGeneration.from_pretrained('facebook/bart-large-cnn')
-        self.tokenizer = BartTokenizer.from_pretrained('facebook/bart-large-cnn')
+        self.tokenizer = AutoTokenizer.from_pretrained("bochaowei/t5-small-finetuned-cnn-wei1")
+        self.model = AutoModelForSeq2SeqLM.from_pretrained("bochaowei/t5-small-finetuned-cnn-wei1")
     
     def handle(self, request):
         ARTICLE_TO_SUMMARIZE = request
-        inputs = self.tokenizer([ARTICLE_TO_SUMMARIZE], max_length=1024, return_tensors='pt')
-        summary_ids = self.model.generate(inputs['input_ids'], num_beams=4, max_length=200, early_stopping=True)
-        return [self.tokenizer.decode(g, skip_special_tokens=True, clean_up_tokenization_spaces=False) for g in summary_ids]
+        input_ids = self.tokenizer([ARTICLE_TO_SUMMARIZE], return_tensors='pt').input_ids
+        outputs = self.model.generate(input_ids,max_length=100)
+        return self.tokenizer.decode(outputs[0], skip_special_tokens=True)
 
 
 class QASystemModule(SystemModuleBase):
@@ -80,10 +82,17 @@ class FDSystemModule(SystemModuleBase):
         super(FDSystemModule, self).__init__(SystemModuleType.FD, tag, *args, **kwargs)
     
     def initialize(self):
-        pass
+        data_generator = DataGenerator(feature, label)
+        model = FDModel(32, 768)
+        self.trainer = FraudDectionTrainer(model, data_generator, args)
+        self.trainer.load_model()
     
     def handle(self, request):
-        pass
+        author = request.get('author')
+        title = request.get('title')
+        text = request.get('text')
+        score = self.trainer.deploy_service_pred(author, title, text)
+        return score
 
 
 class SASystemModule(SystemModuleBase):

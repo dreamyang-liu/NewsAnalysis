@@ -123,6 +123,19 @@ class FDModel(nn.Module):
 
         score = torch.sigmoid(torch.cat([score_fc_author, score_fc_title, score_fc_text], dim=1))
         return F.softmax(self._classifier_fc(score), dim=1)
+    
+    def forward_single(self, author_emb, title_emb, text_emb):
+
+        attn_author = self._author_attn(author_emb)
+        attn_title = self._title_attn(title_emb)
+        attn_text = self._text_attn(text_emb)
+
+        score_fc_author = self._author_fc(attn_author)
+        score_fc_title = self._title_fc(attn_title)
+        score_fc_text = self._text_fc(attn_text)
+
+        score = torch.sigmoid(torch.cat([score_fc_author, score_fc_title, score_fc_text], dim=1))
+        return F.softmax(self._classifier_fc(score), dim=1)
 
 
 if __name__ == '__main__':

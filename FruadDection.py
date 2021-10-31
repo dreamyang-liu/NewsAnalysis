@@ -19,7 +19,7 @@ DEBUG = False
 
 class FraudDectionTrainer(object):
 
-    def __init__(self, model, data_generator:DataGenerator, args):
+    def __init__(self, model:FDModel, data_generator:DataGenerator, args):
         self.model = model.to(TRAIN_DEVICE)
         self.data_generator = data_generator
         self.author_embedding = self.data_generator.author_embedding
@@ -55,6 +55,14 @@ class FraudDectionTrainer(object):
                 except StopIteration:
                     pass
         torch.save(self.model.state_dict(), self.args.save_dir)
+    
+    def deploy_service_pred(self, author, title, text, device=torch.device("cpu")):
+        self.model.eval()
+        self.model = self.model.to(device)
+        auth_emb, title_emb, text_emb = self.data_generator.get_tensor(author, title, text, device)
+        scores = self.model.forward_single(auth_emb, title_emb, text_emb)
+        return scores
+
     
     def eval_epoch(self, author_emb, title_emb, text_emb, label):
         with torch.no_grad():
@@ -127,7 +135,7 @@ def test():
     data_generator = DataGenerator(feature, label)
     model = FDModel(32, 768)
     trainer = FraudDectionTrainer(model, data_generator, args)
-    trainer.train()
+    trainer.load_model()
     dp.read(test_file)
     feature_test = dp.default_process(eval=True)
     pred = trainer.eval(feature_test)
@@ -159,7 +167,7 @@ def postprocess():
     m.to_csv('submit.csv', index=False)
 if __name__ == "__main__":
     test()
-    postprocess()
+    # postprocess()
     
     # se = SentenceEmbedding()
     # se.get_sentence_embeddings(None)
