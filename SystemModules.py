@@ -35,8 +35,9 @@ class TSSystemModule(SystemModuleBase):
         self.model = AutoModelForSeq2SeqLM.from_pretrained("bochaowei/t5-small-finetuned-cnn-wei1")
     
     def handle(self, request):
+        prefix='summarize: '
         ARTICLE_TO_SUMMARIZE = request
-        input_ids = self.tokenizer([ARTICLE_TO_SUMMARIZE], return_tensors='pt').input_ids
+        input_ids = self.tokenizer([prefix+ARTICLE_TO_SUMMARIZE], return_tensors='pt').input_ids
         outputs = self.model.generate(input_ids,max_length=100)
         return self.tokenizer.decode(outputs[0], skip_special_tokens=True)
 
