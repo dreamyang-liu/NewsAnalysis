@@ -28,15 +28,19 @@ class TSSystemModule(SystemModuleBase):
         super(TSSystemModule, self).__init__(SystemModuleType.TS, tag, *args, **kwargs)
 
     def initialize(self):
-        
-        self.model = BartForConditionalGeneration.from_pretrained('facebook/bart-large-cnn')
-        self.tokenizer = BartTokenizer.from_pretrained('facebook/bart-large-cnn')
-    
+
+        self.tokenizer = AutoTokenizer.from_pretrained("bochaowei/t5-small-finetuned-cnn-wei1")
+        self.model = AutoModelForSeq2SeqLM.from_pretrained("bochaowei/t5-small-finetuned-cnn-wei1")
+
     def handle(self, request):
-        ARTICLE_TO_SUMMARIZE = request
-        inputs = self.tokenizer([ARTICLE_TO_SUMMARIZE], max_length=1024, return_tensors='pt')
-        summary_ids = self.model.generate(inputs['input_ids'], num_beams=4, max_length=200, early_stopping=True)
-        return [self.tokenizer.decode(g, skip_special_tokens=True, clean_up_tokenization_spaces=False) for g in summary_ids]
+        prefix='summarize: '
+        ARTICLE_TO_SUMMARIZE=prefix
+        for doc in request:
+            if doc not in '!#$%&\()*+,-./:;<=>?@[\\]^_{|}~`':
+               ARTICLE_TO_SUMMARIZE+=doc
+        input_ids = self.tokenizer([ARTICLE_TO_SUMMARIZE], return_tensors='pt').input_ids
+        outputs = self.model.generate(input_ids,max_length=100)
+        return self.tokenizer.decode(outputs[0], skip_special_tokens=True)
 
 
 class QASystemModule(SystemModuleBase):
@@ -49,10 +53,10 @@ class QASystemModule(SystemModuleBase):
         model_name = "deepset/roberta-base-squad2"
         self.model = AutoModelForQuestionAnswering.from_pretrained(model_name)
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-    
+
     def digest_context(self, passage):
         return passage
-    
+
     def handle(self, request):
 
         question = request
@@ -78,10 +82,10 @@ class FDSystemModule(SystemModuleBase):
     def __init__(self, tag:str, *args, **kwargs):
         self.tag = tag
         super(FDSystemModule, self).__init__(SystemModuleType.FD, tag, *args, **kwargs)
-    
+
     def initialize(self):
         pass
-    
+
     def handle(self, request):
         pass
 
@@ -91,7 +95,7 @@ class SASystemModule(SystemModuleBase):
     def __init__(self, tag:str, *args, **kwargs):
         self.tag = tag
         super(SASystemModule, self).__init__(SystemModuleType.SA, tag, *args, **kwargs)
-    
+
     def initialize(self):
         pass
 
