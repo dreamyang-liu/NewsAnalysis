@@ -36,8 +36,11 @@ class TSSystemModule(SystemModuleBase):
     
     def handle(self, request):
         prefix='summarize: '
-        ARTICLE_TO_SUMMARIZE = request
-        input_ids = self.tokenizer([prefix+ARTICLE_TO_SUMMARIZE], return_tensors='pt').input_ids
+        ARTICLE_TO_SUMMARIZE=prefix
+        for doc in request:
+            if doc not in '!#$%&\()*+,-./:;<=>?@[\\]^_{|}~`':
+               ARTICLE_TO_SUMMARIZE+=doc
+        input_ids = self.tokenizer([ARTICLE_TO_SUMMARIZE], return_tensors='pt').input_ids
         outputs = self.model.generate(input_ids,max_length=100)
         return self.tokenizer.decode(outputs[0], skip_special_tokens=True)
 
