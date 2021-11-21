@@ -86,32 +86,16 @@ class FDSystemModule(SystemModuleBase):
         super(FDSystemModule, self).__init__(SystemModuleType.FD, tag, *args, **kwargs)
     
     def initialize(self):
-        data_generator = DataGenerator(feature, label)
-        model = FDModel(32, 768)
-        self.trainer = FraudDectionTrainer(model, data_generator, args)
-        self.trainer.load_model()
+        self.interface = FraudDectionInterface()
     
     def handle(self, request):
         author = request.get('author')
         title = request.get('title')
         text = request.get('text')
-        score = self.trainer.deploy_service_pred(author, title, text)
+        score = self.interface.predict(author, title, text)
         return score
 
 
-class SASystemModule(SystemModuleBase):
-
-    def __init__(self, tag:str, *args, **kwargs):
-        self.tag = tag
-        super(SASystemModule, self).__init__(SystemModuleType.SA, tag, *args, **kwargs)
-    
-    def initialize(self):
-        pass
-
-    def handle(self, request):
-        pass
-
 
 if __name__ == "__main__":
-    qa = QASystemModule(tag=1)
-    qa.initialize()
+    ...
