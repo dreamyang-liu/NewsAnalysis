@@ -50,6 +50,7 @@ class SystemProxy(object):
         res['summary']=mod_sum.handle(request_c.get('text'))
         res['fruad']=mod_fd.handle(request_c)
         res['answer']=mod_qa.handle(request_c)
+        res['question']=request_c.get('question')
         return res
 
 
