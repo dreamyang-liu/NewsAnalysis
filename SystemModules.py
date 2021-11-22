@@ -30,10 +30,10 @@ class TSSystemModule(SystemModuleBase):
         super(TSSystemModule, self).__init__(SystemModuleType.TS, tag, *args, **kwargs)
 
     def initialize(self):
-        
+
         self.tokenizer = AutoTokenizer.from_pretrained("bochaowei/t5-small-finetuned-cnn-wei1")
         self.model = AutoModelForSeq2SeqLM.from_pretrained("bochaowei/t5-small-finetuned-cnn-wei1")
-    
+
     def handle(self, request):
         prefix='summarize: '
         ARTICLE_TO_SUMMARIZE=prefix
@@ -46,7 +46,19 @@ class TSSystemModule(SystemModuleBase):
 
 
 class QASystemModule(SystemModuleBase):
+    def __init__(self,tag:str, *args, **kwargs):
+        self.tag = tag
+        super(QASystemModule, self).__init__(SystemModuleType.QA, tag, *args, **kwargs)
+    def initialize(self):
+        self.model = AutoModelForQuestionAnswering.from_pretrained('aszidon/' + 'distilbert' + 'custom5')
+        self.tokenizer = AutoTokenizer.from_pretrained('aszidon/' + 'distilbert' + 'custom5')
+        self.pipe = pipeline("question-answering", model=model, tokenizer=tokenizer, framework="pt")
 
+    def handle(self,request):
+        quest= request.get('question')
+        cont=request.get('text')
+        return self.pipe(question=quest, context=cont)['answer']
+    '''
     def __init__(self, tag:str, *args, **kwargs):
         self.tag = tag
         super(QASystemModule, self).__init__(SystemModuleType.QA, tag, *args, **kwargs)
@@ -55,10 +67,10 @@ class QASystemModule(SystemModuleBase):
         model_name = "deepset/roberta-base-squad2"
         self.model = AutoModelForQuestionAnswering.from_pretrained(model_name)
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-    
+
     def digest_context(self, passage):
         return passage
-    
+
     def handle(self, request):
 
         question = request
@@ -78,16 +90,16 @@ class QASystemModule(SystemModuleBase):
         answer_tokens = all_tokens[torch.argmax(start_scores): torch.argmax(end_scores)+1]
         answer = self.tokenizer.decode(self.tokenizer.convert_tokens_to_ids(answer_tokens))[1:].replace('"', '')
         return answer
-
+        '''
 class FDSystemModule(SystemModuleBase):
 
     def __init__(self, tag:str, *args, **kwargs):
         self.tag = tag
         super(FDSystemModule, self).__init__(SystemModuleType.FD, tag, *args, **kwargs)
-    
+
     def initialize(self):
         self.interface = FraudDectionInterface()
-    
+
     def handle(self, request):
         author = request.get('author')
         title = request.get('title')

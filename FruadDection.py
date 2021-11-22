@@ -19,16 +19,16 @@ DEBUG = False
 
 class FraudDectionInterface(object):
 
-    def __init__(self, model):
+    def __init__(self):
         file = './data/fake-news/train.csv'
         self.dp = FakeNewsDataProcesser()
         self.dp.read(file)
         feature, label = self.dp.default_process(split_dataset=True, vali_set=True)
         data_generator = DataGenerator(feature, label)
         self.model = FDModel(32, 768)
-        self.trainer = FraudDectionTrainer(model, data_generator, args)
+        self.trainer = FraudDectionTrainer(self.model, data_generator, args)
         self.trainer.load_model()
-    
+
     def predict(self, author, title, text):
         self.dp.data = pd.DataFrame({"id": [0], "author": [author], "title": [title], "text": [text]})
         feature_test = self.dp.default_process(eval=True)
@@ -38,7 +38,7 @@ class FraudDectionInterface(object):
 class FraudDectionTrainer(object):
 
     def __init__(self, model:FDModel, data_generator:DataGenerator, args):
-        self.model = model.to(TRAIN_DEVICE)
+        self.model = model#.to(TRAIN_DEVICE)
         self.data_generator = data_generator
         self.author_embedding = self.data_generator.author_embedding
 
@@ -51,7 +51,7 @@ class FraudDectionTrainer(object):
 
         self.optim = optim.Adam(list(self.model.parameters()) + list(self.author_embedding.parameters()), lr=0.01)
         self.loss = nn.CrossEntropyLoss()
-        
+
     def train(self):
         self.model.train()
         with trange(self.epoch) as progress:
@@ -73,7 +73,7 @@ class FraudDectionTrainer(object):
                 except StopIteration:
                     pass
         torch.save(self.model.state_dict(), self.args.save_dir)
-    
+
     def deploy_interface(self, feature):
         with torch.no_grad():
             author_emb, title_emb, text_emb = self.data_generator.get_eval_features(feature)
@@ -83,7 +83,7 @@ class FraudDectionTrainer(object):
                 pass
             return o.cpu()
 
-    
+
     def eval_epoch(self, author_emb, title_emb, text_emb, label):
         with torch.no_grad():
             label = label.to(TRAIN_DEVICE)
@@ -95,8 +95,8 @@ class FraudDectionTrainer(object):
             except StopIteration:
                 pass
             return loss, acc
-    
-    
+
+
     def eval(self, feature):
         with torch.no_grad():
             author_emb, title_emb, text_emb = self.data_generator.get_eval_features(feature)
@@ -108,7 +108,7 @@ class FraudDectionTrainer(object):
             return out.cpu()
     def load_model(self):
         self.model.load_state_dict(torch.load(self.args.save_dir))
-    
+
     def eval_on_vali(self):
         self.load_model()
         self.model.eval()
@@ -286,7 +286,7 @@ In another email allegedly from Klawiter on Feb. 20, the DLA Piper partner infor
     print(float(pred.view(-1)[0]))
 
 def test():
-    
+
     file = './data/fake-news/train.csv'
     dp = FakeNewsDataProcesser()
     dp.read(file)
@@ -313,7 +313,7 @@ def train():
     model = FDModel(32, 768)
     trainer = FraudDectionTrainer(model, data_generator, args)
     trainer.train()
-  
+
 def postprocess():
     dp = FakeNewsDataProcesser()
     test_file = './data/fake-news/test.csv'
@@ -327,6 +327,6 @@ def postprocess():
 if __name__ == "__main__":
     deploy_test()
     # postprocess()
-    
+
     # se = SentenceEmbedding()
     # se.get_sentence_embeddings(None)
