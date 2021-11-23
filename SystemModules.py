@@ -58,8 +58,8 @@ class QASystemModule(SystemModuleBase):
         quest= request.get('question')
         cont=request.get('text')
         #return self.pipe(question=quest, context=cont)['answer']
-        testencode = tokenizer(text = quest, text_pair = cont, truncation="only_second", padding=True)
-        output = model(torch.tensor([testencode['input_ids']]), attention_mask=torch.tensor([testencode['attention_mask']]))
+        testencode = self.tokenizer(text = quest, text_pair = cont, truncation="only_second", padding=True)
+        output = self.model(torch.tensor([testencode['input_ids']]), attention_mask=torch.tensor([testencode['attention_mask']]))
 
         anstok = testencode['input_ids'][torch.argmax(output[0]):torch.argmax(output[1])+1]
         answer = tokenizer.convert_ids_to_tokens(anstok, skip_special_tokens=True)
