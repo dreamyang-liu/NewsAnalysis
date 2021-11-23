@@ -63,7 +63,7 @@ class FakeNewsDataProcesser(DataProcesser):
         self.data.title = self.data.title.apply(lambda x: x if len(x) > 5 else np.nan)
         self.data.author = self.data.author.apply(lambda x: self.check_author(x))
         self.data.author = self.data.author.apply(lambda x: re.sub(r'^\s+&', 'Anonymous', x))
-        self.data.author = self.data.author.apply(lambda x: re.split('add|,', x))
+        self.data.author = self.data.author.apply(lambda x: re.split('and|,', x))
     
     def remove_nan_text(self):
         self.data = self.data[self.data.text.notna()]

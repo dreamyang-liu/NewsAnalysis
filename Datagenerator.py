@@ -61,18 +61,19 @@ def collect_all_text(texts_list, process=1):
 
 class DataGenerator(object):
 
-    def __init__(self, feature, label):
+    def __init__(self, feature, label, process=1):
         self.feature = feature
         self.label = label
         _feature = self.feature['train']
         author_set, _ = collect_all_authors(_feature['author'])
+        self.process = process
         self.author_tokenizer = AuthorTokenizer(author_set)
         self.author_embedding = AuthorEmbedding(self.author_tokenizer.author_length, 32).to(TRAIN_DEVICE)
         self.sentence_embedding = SentenceEmbedding(device=PRETRAIN_DEVICE, output_device=TRAIN_DEVICE)
     
     def get_eval_features(self, feature):
         _feature = feature
-        text_list = collect_all_text(_feature['text'], 30)
+        text_list = collect_all_text(_feature['text'], self.process)
         _, author_list = collect_all_authors(_feature['author'])
         title_list = collect_all_titles(_feature['title'])
         author_emb = [self.author_embedding(self.author_tokenizer.encode_author(author).to(TRAIN_DEVICE)) for author in author_list]
@@ -83,7 +84,7 @@ class DataGenerator(object):
     def get_train_features(self):
         _feature = self.feature['train']
         _label = torch.tensor(self.label['train'].values, dtype=torch.long)
-        text_list = collect_all_text(_feature['text'], 30)
+        text_list = collect_all_text(_feature['text'], self.process)
         _, author_list = collect_all_authors(_feature['author'])
         title_list = collect_all_titles(_feature['title'])
         author_emb = [self.author_embedding(self.author_tokenizer.encode_author(author).to(TRAIN_DEVICE)) for author in author_list]
@@ -94,7 +95,7 @@ class DataGenerator(object):
     def get_test_features(self):
         _feature = self.feature['vali']
         _label = torch.tensor(self.label['vali'].values, dtype=torch.long)
-        text_list = collect_all_text(_feature['text'], 30)
+        text_list = collect_all_text(_feature['text'], self.process)
         _, author_list = collect_all_authors(_feature['author'])
         title_list = collect_all_titles(_feature['title'])
         author_emb = [self.author_embedding(self.author_tokenizer.encode_author(author).to(TRAIN_DEVICE)) for author in author_list]
