@@ -41,9 +41,9 @@ def select_free_gpu():
     return gpus[np.argmin(mem)]
 
 CPU = torch.device('cpu')
-PRETRAIN_DEVICE = torch.device('cpu')
-TRAIN_DEVICE = torch.device('cpu')
-DEVICE = torch.device('cpu')
+PRETRAIN_DEVICE = torch.device('cuda:4')
+TRAIN_DEVICE = torch.device('cuda:5')
+DEVICE = torch.device('cuda:4')
 '''
 if torch.cuda.is_available() and args.gpu != -2:
     if args.gpu < 0:

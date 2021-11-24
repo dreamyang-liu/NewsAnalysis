@@ -52,7 +52,7 @@ class QASystemModule(SystemModuleBase):
     def initialize(self):
         self.model = AutoModelForQuestionAnswering.from_pretrained('aszidon/' + 'distilbert' + 'custom5')
         self.tokenizer = AutoTokenizer.from_pretrained('aszidon/' + 'distilbert' + 'custom5')
-        self.pipe = pipeline("question-answering", model=model, tokenizer=tokenizer, framework="pt")
+        self.pipe = pipeline("question-answering", model=self.model, tokenizer=self.tokenizer, framework="pt")
 
     def handle(self,request):
         quest= request.get('question')
@@ -62,8 +62,8 @@ class QASystemModule(SystemModuleBase):
         output = self.model(torch.tensor([testencode['input_ids']]), attention_mask=torch.tensor([testencode['attention_mask']]))
 
         anstok = testencode['input_ids'][torch.argmax(output[0]):torch.argmax(output[1])+1]
-        answer = tokenizer.convert_ids_to_tokens(anstok, skip_special_tokens=True)
-        answer = tokenizer.convert_tokens_to_string(answer)
+        answer = self.tokenizer.convert_ids_to_tokens(anstok, skip_special_tokens=True)
+        answer = self.tokenizer.convert_tokens_to_string(answer)
         return answer
 
     '''

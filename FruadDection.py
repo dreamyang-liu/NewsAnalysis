@@ -38,7 +38,7 @@ class FraudDectionInterface(object):
 class FraudDectionTrainer(object):
 
     def __init__(self, model:FDModel, data_generator:DataGenerator, args):
-        self.model = model#.to(TRAIN_DEVICE)
+        self.model = model.to(TRAIN_DEVICE)
         self.data_generator = data_generator
         self.author_embedding = self.data_generator.author_embedding
 
@@ -107,7 +107,7 @@ class FraudDectionTrainer(object):
                 pass
             return out.cpu()
     def load_model(self):
-        self.model.load_state_dict(torch.load(self.args.save_dir))
+        self.model.load_state_dict(torch.load('/nethome/xchen648/mliu444_codes/NewsAnalysis/saved_models/fruad'))
 
     def eval_on_vali(self):
         self.load_model()

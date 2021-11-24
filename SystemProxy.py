@@ -38,19 +38,25 @@ class SystemProxy(object):
         return module.handle(request)
     '''
 
+    def initalize(self):
+        self.mod_sum=TSSystemModule('t5')
+        self.mod_sum.initialize()
+        self.mod_fd=FDSystemModule('att')
+        self.mod_fd.initialize()
+        self.mod_qa=QASystemModule('distill_bert')
+        self.mod_qa.initialize()
+
     def serve(self, request_c):
         #return self.request_dispatch(request)
-        mod_sum=TSSystemModule('t5')
-        mod_sum.initialize()
-        mod_fd=FDSystemModule('att')
-        mod_fd.initialize()
-        mod_qa=QASystemModule('distill_bert')
-        mod_qa.initialize()
         res={}
-        res['summary']=mod_sum.handle(request_c.get('text'))
-        res['fruad']=mod_fd.handle(request_c)
-        res['answer']=mod_qa.handle(request_c)
-        res['question']=request_c.get('question')
+        if request_c.get('service') == 'all':
+            res['summary']=self.mod_sum.handle(request_c.get('text'))
+            res['fruad']=self.mod_fd.handle(request_c)
+            res['answer']=self.mod_qa.handle(request_c)
+            res['question']=request_c.get('question')
+        elif request_c.get('service') == 'qa':
+            res['answer']=self.mod_qa.handle(request_c)
+            res['question']=request_c.get('question')
         return res
 
 
@@ -67,6 +73,7 @@ def model_handler(kwargs):
 '''
 
 PROXY = SystemProxy()
+PROXY.initalize()
 app = Flask(__name__)
 CORS(app, supports_credentials=True)
 
