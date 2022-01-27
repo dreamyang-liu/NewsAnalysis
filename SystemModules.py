@@ -30,10 +30,10 @@ class TSSystemModule(SystemModuleBase):
         super(TSSystemModule, self).__init__(SystemModuleType.TS, tag, *args, **kwargs)
 
     def initialize(self):
-        
+
         self.tokenizer = AutoTokenizer.from_pretrained("bochaowei/t5-small-finetuned-cnn-wei1")
         self.model = AutoModelForSeq2SeqLM.from_pretrained("bochaowei/t5-small-finetuned-cnn-wei1")
-    
+
     def handle(self, request):
         prefix='summarize: '
         ARTICLE_TO_SUMMARIZE=prefix
@@ -55,10 +55,10 @@ class QASystemModule(SystemModuleBase):
         model_name = "deepset/roberta-base-squad2"
         self.model = AutoModelForQuestionAnswering.from_pretrained(model_name)
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-    
+
     def digest_context(self, passage):
         return passage
-    
+
     def handle(self, request):
 
         question = request
@@ -84,7 +84,7 @@ class FDSystemModule(SystemModuleBase):
     def __init__(self, tag:str, *args, **kwargs):
         self.tag = tag
         super(FDSystemModule, self).__init__(SystemModuleType.FD, tag, *args, **kwargs)
-    
+
     def initialize(self):
         self.interface = FraudDectionInterface()
     
@@ -95,7 +95,18 @@ class FDSystemModule(SystemModuleBase):
         score = self.interface.predict(author, title, text)
         return score
 
+class SASystemModule(SystemModuleBase):
+
+    def __init__(self, tag:str, *args, **kwargs):
+        self.tag = tag
+        super(SASystemModule, self).__init__(SystemModuleType.SA, tag, *args, **kwargs)
+
+    def initialize(self):
+        pass
+
 
 
 if __name__ == "__main__":
-    ...
+    qa = QASystemModule(tag=1)
+    qa.initialize()
+
